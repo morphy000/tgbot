@@ -1,19 +1,32 @@
-# Конфигурация Telegram бота
-# Замените значения на ваши реальные данные
+from pydantic import BaseModel
+from typing import List
+import os
 
-# Токен бота от @BotFather
-BOT_TOKEN = "your_bot_token_here"
+from dotenv import load_dotenv
 
-# URL для webhook (замените на ваш реальный IP адрес)
-WEBHOOK_URL = "https://your_ipv4_address/bot"
+load_dotenv()
 
-# Список вебинаров (можно изменить по желанию)
-WEBINARS = [
-    "Энергопоток",
-    "Денежный рост", 
-    "Пакет сверхмощных практик"
-]
 
-# Ссылки для покупки (замените на реальные)
-PURCHASE_LINK = "https://example.com/purchase"
-HALF_WEBINAR_LINK_TEMPLATE = "https://example.com/{webinar}-half"
+class Settings(BaseModel):
+	bot_token: str
+	purchase_link: str = "https://example.com/purchase"
+	half_link_template: str = "https://example.com/{webinar}-half"
+	webinars: List[str] = [
+		"Энергопоток",
+		"Денежный рост",
+		"Пакет сверхмощных практик",
+	]
+
+	@classmethod
+	def from_env(cls) -> "Settings":
+		return cls(
+			bot_token=os.getenv("BOT_TOKEN", ""),
+			purchase_link=os.getenv("PURCHASE_LINK", "https://example.com/purchase"),
+			half_link_template=os.getenv("HALF_WEBINAR_LINK_TEMPLATE", "https://example.com/{webinar}-half"),
+		)
+
+
+settings = Settings.from_env()
+
+if not settings.bot_token:
+	raise RuntimeError("BOT_TOKEN не задан. Установите переменную окружения или .env файл.")

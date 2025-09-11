@@ -1,170 +1,119 @@
-from flask import Flask, request
+import logging
 import telebot
 from telebot import types
-import os
+from config import settings
 
-app = Flask(__name__)
+logging.basicConfig(
+	level=logging.INFO,
+	format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("tgbot")
 
-# Конфигурация бота
-BOT_TOKEN = os.getenv('BOT_TOKEN', 'your_bot_token_here')  # Замени на токен от @BotFather
-WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://your_ipv4_address/bot')  # Замени на реальный URL
+bot = telebot.TeleBot(settings.bot_token, parse_mode="Markdown")
 
-bot = telebot.TeleBot(BOT_TOKEN)
+MAIN_BUTTONS = ["Хочу вебинар!", "Все еще сомневаюсь"]
+BACK_BUTTON = "Назад"
+FULL_ACCESS_BUTTON = "Хочу полный доступ"
 
-# Список вебинаров (можно изменить по желанию)
-WEBINARS = [
-    "Энергопоток",
-    "Денежный рост", 
-    "Пакет сверхмощных практик"
-]
 
-# Функция /start
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    markup.add(types.KeyboardButton("Хочу вебинар!"))
-    markup.add(types.KeyboardButton("Все еще сомневаюсь"))
-    
-    welcome_text = """🎉 **Привет! Мы знаем, зачем ты здесь!** 🎉
+def make_kb(labels: list[str]) -> types.ReplyKeyboardMarkup:
+	kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+	for label in labels:
+		kb.add(types.KeyboardButton(label))
+	return kb
 
-🔥 **Что произошло?**
-Мы раздобыли эксклюзивный доступ к полным записям вебинаров Анны Тельновой по нумерологии! «Энергопоток», «Денежный рост», «Пакет сверхмощных практик» — и это только начало! Готов к мощным знаниям?
 
-💡 **Как это работает?**
-Мы не можем просто раздать платный контент направо и налево. Но у нас есть честная сделка:
-Ты делаешь символическое пожертвование всего **500 рублей** на поддержку нашего канала (чтобы мы продолжали находить для тебя крутые штуки). А мы дарим тебе полную запись любого вебинара на твой выбор!
+@bot.message_handler(commands=["start"])  # список строк
+def start_handler(message: types.Message) -> None:
+	kb = make_kb(MAIN_BUTTONS)
+	text = (
+		"🎉 **Привет! Мы знаем, зачем ты здесь!** 🎉\n\n"
+		"🔥 **Что произошло?**\n"
+		"Мы раздобыли эксклюзивный доступ к полным записям вебинаров Анны Тельновой по нумерологии! «Энергопоток», «Денежный рост», «Пакет сверхмощных практик» — и это только начало! Готов к мощным знаниям?\n\n"
+		"💡 **Как это работает?**\n"
+		"Мы не можем просто раздать платный контент направо и налево. Но у нас есть честная сделка:\n"
+		"Ты делаешь символическое пожертвование всего **500 рублей** на поддержку нашего канала. А мы дарим тебе полную запись любого вебинара на твой выбор!\n\n"
+		"🌟 **Что ты получишь?**\n"
+		"✅ Тот же топовый контент от эксперта Анны Тельновой.\n"
+		"✅ Полную видео- или аудиозапись в топовом качестве.\n"
+		"✅ Экономию до **3000 рублей** с каждого вебинара!\n"
+		"✅ Шанс наконец разобраться в своих цифрах и изменить жизнь к лучшему."
+	)
+	bot.send_message(message.chat.id, text, reply_markup=kb)
 
-🌟 **Что ты получишь?**
-✅ Тот же топовый контент от эксперта Анны Тельновой.
-✅ Полную видео- или аудиозапись в топовом качестве.
-✅ Экономию до **3000 рублей** с каждого вебинара!
-✅ Шанс наконец разобраться в своих цифрах и изменить жизнь к лучшему."""
-    
-    bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
-# Обработка "Хочу вебинар!"
-@bot.message_handler(lambda message: message.text == "Хочу вебинар!")
-def send_webinar_options(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    
-    # Добавляем кнопки для каждого вебинара
-    for webinar in WEBINARS:
-        markup.add(types.KeyboardButton(webinar))
-    
-    markup.add(types.KeyboardButton("Назад"))
-    
-    bot.send_message(message.chat.id, "Выбери свой вебинар:", reply_markup=markup)
+@bot.message_handler(func=lambda m: m.text == "Хочу вебинар!")
+def handle_want_webinar(message: types.Message) -> None:
+	kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+	for w in settings.webinars:
+		kb.add(types.KeyboardButton(w))
+	kb.add(types.KeyboardButton(BACK_BUTTON))
+	bot.send_message(message.chat.id, "Выбери свой вебинар:", reply_markup=kb)
 
-# Обработка "Все еще сомневаюсь"
-@bot.message_handler(lambda message: message.text == "Все еще сомневаюсь")
-def send_doubts(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    markup.add(types.KeyboardButton("Хочу вебинар!"))
-    markup.add(types.KeyboardButton("Остались сомнения"))
-    
-    doubts_text = """⚡ **Не переживай, всё по-честному!** ⚡
 
-Ты не покупаешь пиратку — ты жертвуешь на развитие наших проектов и получаешь ценный подарок в благодарность. Всё легально и прозрачно!
+@bot.message_handler(func=lambda m: m.text == "Все еще сомневаюсь")
+def handle_doubts(message: types.Message) -> None:
+	kb = make_kb(["Хочу вебинар!", "Остались сомнения"])
+	text = (
+		"⚡ **Не переживай, всё по-честному!** ⚡\n\n"
+		"Ты не покупаешь пиратку — ты жертвуешь на развитие наших проектов и получаешь ценный подарок. Всё легально и прозрачно!\n\n"
+		"Это лучшая инвестиция в себя за **500 рублей вместо 3500**. Давай, решайся!"
+	)
+	bot.send_message(message.chat.id, text, reply_markup=kb)
 
-Это лучшая инвестиция в себя за **500 рублей вместо 3500**. Давай, решайся!"""
-    
-    bot.send_message(message.chat.id, doubts_text, parse_mode="Markdown", reply_markup=markup)
 
-# Обработка "Остались сомнения"
-@bot.message_handler(lambda message: message.text == "Остались сомнения")
-def send_free_half(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    
-    # Добавляем кнопки для бесплатной половины каждого вебинара
-    for webinar in WEBINARS:
-        markup.add(types.KeyboardButton(f"{webinar} (половина бесплатно)"))
-    
-    markup.add(types.KeyboardButton("Назад"))
-    
-    free_half_text = """🎁 **Супер-фишка для самых упорных!** 🎁
+@bot.message_handler(func=lambda m: m.text == "Остались сомнения")
+def handle_still_doubts(message: types.Message) -> None:
+	kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+	for w in settings.webinars:
+		kb.add(types.KeyboardButton(f"{w} (половина бесплатно)"))
+	kb.add(types.KeyboardButton(BACK_BUTTON))
+	text = (
+		"🎁 **Супер-фишка для самых упорных!** 🎁\n\n"
+		"Получите половину вебинара **БЕСПЛАТНО** на выбор и убедитесь в качестве."
+	)
+	bot.send_message(message.chat.id, text, reply_markup=kb)
 
-Для тех, кто всё ещё думает, — получи половину вебинара **БЕСПЛАТНО** на выбор! Выбери один из трёх и убедись в качестве сам."""
-    
-    bot.send_message(message.chat.id, free_half_text, parse_mode="Markdown", reply_markup=markup)
 
-# Обработка "Назад"
-@bot.message_handler(lambda message: message.text == "Назад")
-def go_back(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    markup.add(types.KeyboardButton("Хочу вебинар!"))
-    markup.add(types.KeyboardButton("Все еще сомневаюсь"))
-    
-    bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
+@bot.message_handler(func=lambda m: m.text == BACK_BUTTON)
+def handle_back(message: types.Message) -> None:
+	kb = make_kb(MAIN_BUTTONS)
+	bot.send_message(message.chat.id, "Выберите действие:", reply_markup=kb)
 
-# Обработка выбора бесплатной половины вебинара
-@bot.message_handler(lambda message: any(webinar in message.text and "половина бесплатно" in message.text for webinar in WEBINARS))
-def send_free_half_link(message):
-    # Извлекаем название вебинара из текста
-    webinar = None
-    for w in WEBINARS:
-        if w in message.text:
-            webinar = w
-            break
-    
-    if webinar:
-        # Отправляем ссылку на половину вебинара
-        half_link = f"https://example.com/{webinar.lower().replace(' ', '-')}-half"
-        bot.send_message(message.chat.id, f"Вот ссылка на половину вебинара **{webinar}**: {half_link}", parse_mode="Markdown")
-        
-        # Добавляем кнопку для полного доступа
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-        markup.add(types.KeyboardButton("Хочу полный доступ"))
-        markup.add(types.KeyboardButton("Назад"))
-        
-        bot.send_message(message.chat.id, "Хотите полный доступ?", reply_markup=markup)
 
-# Обработка "Хочу полный доступ"
-@bot.message_handler(lambda message: message.text == "Хочу полный доступ")
-def send_purchase(message):
-    purchase_link = "https://example.com/purchase"
-    bot.send_message(message.chat.id, f"Перейдите по ссылке для покупки: {purchase_link}")
-    
-    # Возвращаем к основному меню
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    markup.add(types.KeyboardButton("Хочу вебинар!"))
-    markup.add(types.KeyboardButton("Все еще сомневаюсь"))
-    
-    bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
+@bot.message_handler(func=lambda m: any(w == m.text for w in settings.webinars))
+def handle_full_webinar_choice(message: types.Message) -> None:
+	kb = make_kb([FULL_ACCESS_BUTTON, BACK_BUTTON])
+	bot.send_message(
+		message.chat.id,
+		f"Отлично! Вы выбрали вебинар **{message.text}**. Перейдите по ссылке для покупки: {settings.purchase_link}",
+	)
+	bot.send_message(message.chat.id, "Хотите полный доступ?", reply_markup=kb)
 
-# Обработка выбора полного вебинара
-@bot.message_handler(lambda message: any(webinar == message.text for webinar in WEBINARS))
-def send_full_webinar_link(message):
-    webinar = message.text
-    purchase_link = "https://example.com/purchase"
-    
-    bot.send_message(message.chat.id, f"Отлично! Вы выбрали вебинар **{webinar}**. Перейдите по ссылке для покупки: {purchase_link}", parse_mode="Markdown")
-    
-    # Возвращаем к основному меню
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    markup.add(types.KeyboardButton("Хочу вебинар!"))
-    markup.add(types.KeyboardButton("Все еще сомневаюсь"))
-    
-    bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
 
-# Webhook endpoint
-@app.route('/bot', methods=['POST'])
-def webhook():
-    update = telebot.types.Update.de_json(request.get_json())
-    bot.process_new_updates([update])
-    return 'OK', 200
+@bot.message_handler(func=lambda m: any((w in m.text and "половина бесплатно" in m.text) for w in settings.webinars))
+def handle_half_choice(message: types.Message) -> None:
+	webinar = next((w for w in settings.webinars if w in message.text), None)
+	if webinar:
+		slug = webinar.lower().replace(" ", "-")
+		half_link = settings.half_link_template.format(webinar=slug)
+		bot.send_message(message.chat.id, f"Вот ссылка на половину вебинара **{webinar}**: {half_link}")
+		kb = make_kb([FULL_ACCESS_BUTTON, BACK_BUTTON])
+		bot.send_message(message.chat.id, "Хотите полный доступ?", reply_markup=kb)
 
-# Главная страница для проверки работы сервера
-@app.route('/', methods=['GET'])
-def index():
-    return 'Telegram Bot is running!'
 
-if __name__ == '__main__':
-    # Удаляем старый webhook и устанавливаем новый
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-    
-    print(f"Bot started! Webhook URL: {WEBHOOK_URL}")
-    print("Make sure your server is accessible from the internet!")
-    
-    # Запускаем Flask приложение
-    app.run(host='0.0.0.0', port=80, debug=False)
+@bot.message_handler(func=lambda m: m.text == FULL_ACCESS_BUTTON)
+def handle_full_access(message: types.Message) -> None:
+	kb = make_kb(MAIN_BUTTONS)
+	bot.send_message(message.chat.id, f"Перейдите по ссылке для покупки: {settings.purchase_link}")
+	bot.send_message(message.chat.id, "Выберите действие:", reply_markup=kb)
+
+
+def main() -> None:
+	logger.info("Starting bot in polling mode...")
+	bot.remove_webhook()
+	bot.infinity_polling(timeout=60, long_polling_timeout=30)
+
+
+if __name__ == "__main__":
+	main()
