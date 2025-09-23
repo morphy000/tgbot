@@ -48,7 +48,13 @@ def handle_want_webinar(message: types.Message) -> None:
 	for w in settings.webinars:
 		kb.add(types.KeyboardButton(w))
 	kb.add(types.KeyboardButton(BACK_BUTTON))
-	bot.send_message(message.chat.id, "Выбери свой вебинар:", reply_markup=kb)
+	
+	text = (
+		f"Выбери свой вебинар:\n\n"
+		f"📞 **Для получения доступа напишите:** {settings.fake_account}\n"
+		f"Мы свяжемся с вами и предоставим доступ к выбранному вебинару."
+	)
+	bot.send_message(message.chat.id, text, reply_markup=kb)
 
 
 @bot.message_handler(func=lambda m: m.text == "Все еще сомневаюсь")
@@ -83,11 +89,18 @@ def handle_back(message: types.Message) -> None:
 
 @bot.message_handler(func=lambda m: any(w == m.text for w in settings.webinars))
 def handle_full_webinar_choice(message: types.Message) -> None:
-	kb = make_kb([FULL_ACCESS_BUTTON, BACK_BUTTON])
-	bot.send_message(
-		message.chat.id,
-		f"Отлично! Вы выбрали вебинар **{message.text}**. Перейдите по ссылке для покупки: {settings.purchase_link}",
+	webinar = message.text
+	link = settings.webinar_links.get(webinar, "https://example.com/not-found")
+	
+	text = (
+		f"🎉 **Отлично! Вы выбрали вебинар: {webinar}**\n\n"
+		f"📱 **Ссылка на канал:** {link}\n\n"
+		f"📞 **Для активации доступа напишите:** {settings.fake_account}\n"
+		f"Мы предоставим вам полный доступ к выбранному вебинару."
 	)
+	
+	kb = make_kb([FULL_ACCESS_BUTTON, BACK_BUTTON])
+	bot.send_message(message.chat.id, text)
 	bot.send_message(message.chat.id, "Хотите полный доступ?", reply_markup=kb)
 
 
@@ -95,9 +108,14 @@ def handle_full_webinar_choice(message: types.Message) -> None:
 def handle_half_choice(message: types.Message) -> None:
 	webinar = next((w for w in settings.webinars if w in message.text), None)
 	if webinar:
-		slug = webinar.lower().replace(" ", "-")
-		half_link = settings.half_link_template.format(webinar=slug)
-		bot.send_message(message.chat.id, f"Вот ссылка на половину вебинара **{webinar}**: {half_link}")
+		link = settings.webinar_links.get(webinar, "https://example.com/not-found")
+		text = (
+			f"🎁 **Пробный доступ к вебинару: {webinar}**\n\n"
+			f"📱 **Ссылка на канал:** {link}\n\n"
+			f"📞 **Для полного доступа напишите:** {settings.fake_account}\n"
+			f"Мы предоставим вам полную версию вебинара."
+		)
+		bot.send_message(message.chat.id, text)
 		kb = make_kb([FULL_ACCESS_BUTTON, BACK_BUTTON])
 		bot.send_message(message.chat.id, "Хотите полный доступ?", reply_markup=kb)
 
@@ -105,7 +123,13 @@ def handle_half_choice(message: types.Message) -> None:
 @bot.message_handler(func=lambda m: m.text == FULL_ACCESS_BUTTON)
 def handle_full_access(message: types.Message) -> None:
 	kb = make_kb(MAIN_BUTTONS)
-	bot.send_message(message.chat.id, f"Перейдите по ссылке для покупки: {settings.purchase_link}")
+	text = (
+		f"💎 **Полный доступ к вебинарам**\n\n"
+		f"📞 **Для получения полного доступа напишите:** {settings.fake_account}\n"
+		f"Мы предоставим вам доступ ко всем вебинарам Анны Тельновой.\n\n"
+		f"💰 **Стоимость:** 500 рублей (экономия до 3000 рублей!)"
+	)
+	bot.send_message(message.chat.id, text)
 	bot.send_message(message.chat.id, "Выберите действие:", reply_markup=kb)
 
 

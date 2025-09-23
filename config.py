@@ -9,20 +9,25 @@ load_dotenv()
 
 class Settings(BaseModel):
 	bot_token: str
-	purchase_link: str = "https://example.com/purchase"
-	half_link_template: str = "https://example.com/{webinar}-half"
+	fake_account: str = "@cuute_kira"
+	webinar_links: dict = {
+		"Денежный рост": "https://t.me/+mnY-SrO2MuUzNDc6",
+		"СНОВИДЕНИЯ ч.1": "https://t.me/+HUUzs1zzXp9iMzJi", 
+		"ПАКЕТ СВЕРХМОЩНЫХ ПРАКТИК": "https://t.me/+gxnBxZ-A3rE0MGYy",
+		"Энергопоток": "https://example.com/energopotok"  # placeholder
+	}
 	webinars: List[str] = [
 		"Энергопоток",
 		"Денежный рост",
-		"Пакет сверхмощных практик",
+		"СНОВИДЕНИЯ ч.1",
+		"ПАКЕТ СВЕРХМОЩНЫХ ПРАКТИК",
 	]
 
 	@classmethod
 	def from_env(cls) -> "Settings":
 		return cls(
 			bot_token=os.getenv("BOT_TOKEN", ""),
-			purchase_link=os.getenv("PURCHASE_LINK", "https://example.com/purchase"),
-			half_link_template=os.getenv("HALF_WEBINAR_LINK_TEMPLATE", "https://example.com/{webinar}-half"),
+			fake_account=os.getenv("FAKE_ACCOUNT", "@cuute_kira"),
 		)
 
 
